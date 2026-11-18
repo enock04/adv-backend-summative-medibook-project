@@ -33,6 +33,18 @@ module.exports = {
     host: process.env.REDIS_HOST || 'localhost',
     port: Number(process.env.REDIS_PORT || 6379),
   },
+  queues: {
+    waitlistKeyPrefix: 'waitlist',
+    waitlistProcessing: 'waitlist:processing',
+    waitlistFailed: 'waitlist:failed',
+    promotionJobs: 'jobs:promotion',
+    notificationJobs: 'jobs:notification',
+  },
+  worker: {
+    maxAttempts: Number(process.env.WORKER_MAX_ATTEMPTS || 3),
+    blockSeconds: Number(process.env.WORKER_BLOCK_SECONDS || 5),
+    retryDelayMs: Number(process.env.WORKER_RETRY_DELAY_MS || 1000),
+  },
   auditLogDir: process.env.AUDIT_LOG_DIR || 'logs',
   rules,
 };
