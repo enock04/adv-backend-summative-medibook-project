@@ -48,4 +48,11 @@ const validateSlot = (input, now = new Date(), policy = rules) => {
   return { valid: true, date };
 };
 
-module.exports = { parseDateTime, validateSlot };
+const pad = (value) => String(value).padStart(2, '0');
+
+// Formats a Date as 'YYYY-MM-DD HH:mm:ss' in clinic-local time, the format MySQL DATETIME uses.
+const formatDateTime = (date) =>
+  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+  `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+
+module.exports = { parseDateTime, validateSlot, formatDateTime };
