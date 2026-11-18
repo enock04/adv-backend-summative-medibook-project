@@ -1,4 +1,5 @@
 const { badRequest } = require('./httpError');
+const { parseDateTime } = require('./slot');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
@@ -67,4 +68,17 @@ const validateBookingInput = (body = {}) => {
   return { patient_id, doctor_id, appt_datetime: body.appt_datetime };
 };
 
-module.exports = { parseId, validatePatientInput, validateDoctorInput, validateBookingInput };
+const validateDay = (value) => {
+  if (typeof value !== 'string' || !parseDateTime(`${value} 00:00`)) {
+    throw badRequest('date is required in the form YYYY-MM-DD');
+  }
+  return value;
+};
+
+module.exports = {
+  parseId,
+  validatePatientInput,
+  validateDoctorInput,
+  validateBookingInput,
+  validateDay,
+};
