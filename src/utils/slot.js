@@ -1,0 +1,51 @@
+const { rules } = require('../config');
+
+const DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+// Parses 'YYYY-MM-DD HH:mm[:ss]' (or with 'T') as clinic-local time.
+// Returns null for malformed input or impossible dates such as 2026-02-30.
+const parseDateTime = (input) => {
+  if (typeof input !== 'string') return null;
+  const match = DATETIME_PATTERN.exec(input.trim());
+  if (!match) return null;
+
+  const [year, month, day, hour, minute, second] = match.slice(1).map((part) => Number(part ?? 0));
+  const date = new Date(year, month - 1, day, hour, minute, second);
+  const isRealDate =
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    date.getHours() === hour &&
+    date.getMinutes() === minute;
+  return isRealDate ? date : null;
+};
+
+/**
+ * Validates a requested appointment start time.
+ * Returns { valid: true, date } or { valid: false, code, message }.
+ * The last bookable slot starts at (day end - slot length), e.g. 16:30.
+ */
+const validateSlot = (input, now = new Date(), policy = rules) => {
+  const date = parseDateTime(input);
+  if (!date) {
+    return { valid: false, code: 'MALFORMED', message: 'appt_datetime must be a valid date in the form YYYY-MM-DD HH:mm' };
+  }
+
+  if (date.getSeconds() !== 0 || date.getMinutes() % policy.slotMinutes !== 0) {
+    return { valid: false, code: 'NOT_ON_BOUNDARY', message: `Appointments must start on a ${policy.slotMinutes}-minute boundary` };
+  }
+
+  const minutesIntoDay = date.getHours() * 60 + date.getMinutes();
+  const lastStart = policy.dayEndMinutes - policy.slotMinutes;
+  if (minutesIntoDay < policy.dayStartMinutes || minutesIntoDay > lastStart) {
+    return { valid: false, code: 'OUTSIDE_HOURS', message: 'Appointments must start between 09:00 and 16:30' };
+  }
+
+  if (date.getTime() <= now.getTime()) {
+    return { valid: false, code: 'NOT_FUTURE', message: 'Appointments can only be booked in the future' };
+  }
+
+  return { valid: true, date };
+};
+
+module.exports = { parseDateTime, validateSlot };
