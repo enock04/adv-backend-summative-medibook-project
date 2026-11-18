@@ -1,7 +1,10 @@
 const express = require('express');
 const controller = require('../controllers/doctorController');
+const reportController = require('../controllers/reportController');
 
 const router = express.Router();
+
+router.get('/:id/statistics', reportController.doctorStatistics);
 
 router.route('/').get(controller.listDoctors).post(controller.createDoctor);
 router

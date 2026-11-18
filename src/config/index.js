@@ -11,6 +11,7 @@ const rules = {
   dayStartMinutes: toMinutes(process.env.WORKDAY_START || '09:00'),
   dayEndMinutes: toMinutes(process.env.WORKDAY_END || '17:00'),
   busyDayThreshold: Number(process.env.BUSY_DAY_THRESHOLD || 0.8),
+  statsWindowDays: 7,
   refund: {
     fullRefundAboveHours: 48,
     partialRefundFromHours: 24,
