@@ -4,7 +4,7 @@ Backend service for booking doctor appointments at a community clinic. Doctors s
 
 **Stack:** Node.js, Express, MySQL (`mysql2`, parameterized queries only, no ORM), Redis (`ioredis`), Jest.
 
-The original assignment brief is kept in [docs/ASSIGNMENT.md](docs/ASSIGNMENT.md). The database diagram is [schema-diagram.pdf](schema-diagram.pdf) (dbdiagram.io source: [database/schema.dbml](database/schema.dbml)).
+The original assignment brief is kept in [docs/ASSIGNMENT.md](docs/ASSIGNMENT.md). The database diagram is [schema-diagram.pdf](schema-diagram.pdf).
 
 ## Prerequisites
 
@@ -55,6 +55,103 @@ The original assignment brief is kept in [docs/ASSIGNMENT.md](docs/ASSIGNMENT.md
    ```
 
 The API listens on the `PORT` from `.env` (`.env.example` uses 3011). The seed appointments are dated December 2026. Because booking only accepts future dates, the seed data is meant to be used before then.
+
+## Running the system
+
+The system is two processes, the web server and the worker, plus MySQL and Redis. All of them must be running for the full flow (the worker handles waitlist promotion and confirmation messages).
+
+1. **Check that MySQL and Redis are running.** If the containers are stopped (for example after a reboot), start them:
+
+   ```powershell
+   docker ps --filter name=medibook
+   docker start medibook-mysql medibook-redis
+   ```
+
+2. **Terminal 1: start the web server.** It should print `MediBook API listening on port 3011`.
+
+   ```powershell
+   npm start
+   ```
+
+3. **Terminal 2: start the worker.** It should print `MediBook worker started`.
+
+   ```powershell
+   npm run worker
+   ```
+
+4. **Check that it works.** This should list the 3 seeded doctors:
+
+   ```powershell
+   Invoke-RestMethod http://localhost:3011/api/doctors
+   ```
+
+### Try the main flow (uses the seed data)
+
+Dr. Boateng (doctor 1) has 11 of 12 slots booked on 2026-12-07, so one more booking fills the day.
+
+**Book** the last slot (returns 201 with the appointment and its id):
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:3011/api/appointments -ContentType "application/json" -Body '{"patient_id":2,"doctor_id":1,"appt_datetime":"2026-12-07 14:30"}'
+```
+
+**Try one more:** the day is full, so this returns 409 with `waitlist_available: true`:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:3011/api/appointments -ContentType "application/json" -Body '{"patient_id":3,"doctor_id":1,"appt_datetime":"2026-12-07 15:00"}'
+```
+
+**Join the waitlist** (201, position 1), then look at the queue:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:3011/api/waitlist -ContentType "application/json" -Body '{"patient_id":3,"doctor_id":1,"appt_datetime":"2026-12-07 15:00"}'
+Invoke-RestMethod "http://localhost:3011/api/waitlist?doctor_id=1&date=2026-12-07"
+```
+
+**Cancel** a booking on that day (appointment 5). The response states the refund (more than 48 hours of notice means 100%):
+
+```powershell
+Invoke-RestMethod -Method Delete -Uri http://localhost:3011/api/appointments/5
+```
+
+Within a second or two the worker promotes patient 3 into the freed slot. Check the queue again (it should be empty) and the audit log:
+
+```powershell
+Invoke-RestMethod "http://localhost:3011/api/waitlist?doctor_id=1&date=2026-12-07"
+Get-Content logs/audit.log -Tail 6
+```
+
+The log shows the cancellation, the promotion, the new booking and the confirmation message (`NOTIFICATION_SENT`).
+
+**Reports, statistics and the feedback page:**
+
+```powershell
+Invoke-RestMethod http://localhost:3011/api/reports/doctors
+Invoke-RestMethod http://localhost:3011/api/reports/busy-days
+Invoke-RestMethod http://localhost:3011/api/doctors/1/statistics
+```
+
+Open http://localhost:3011/feedback and http://localhost:3011/feedback?lang=fr in a browser.
+
+### Stopping and resetting
+
+- Stop the server and the worker with Ctrl+C in their terminals, and the databases with `docker stop medibook-mysql medibook-redis`.
+- To go back to the original seed data, remove the MySQL container and run the `docker run` command from Setup again (the init scripts only run on a fresh container), and clear Redis:
+
+  ```powershell
+  docker rm -f medibook-mysql
+  docker exec medibook-redis redis-cli FLUSHALL
+  ```
+
+### Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| `EADDRINUSE` on start | Another program uses the port. Change `PORT` in `.env`. |
+| `500` on every request, or "Access denied" in the server terminal | `DB_USER` or `DB_PASSWORD` in `.env` is wrong or still the template value. Restart after fixing (`.env` is read at startup). |
+| Waitlisted patient is never promoted | The worker is not running (`npm run worker`). The job waits in Redis and is processed when the worker starts. |
+| Connection refused to MySQL or Redis | The containers are stopped. Run `docker start medibook-mysql medibook-redis`. |
+| Booking returns 422 for a date in the seed data | The date has passed. Use a future date. |
 
 ## Environment variables
 
@@ -135,7 +232,7 @@ The guarantee is at-least-once, not exactly-once. If the booking commits but Red
 ## Project structure
 
 ```
-├── database/        schema.sql, seed.sql, schema.dbml
+├── database/        schema.sql, seed.sql
 ├── locales/         en.json, fr.json
 ├── tests/           Jest unit tests (no MySQL or Redis needed)
 └── src/
