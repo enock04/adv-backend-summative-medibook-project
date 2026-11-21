@@ -92,7 +92,7 @@ Booking a taken slot or a full day returns `409` with `"waitlist_available": tru
 
 **REST choices.** Plural nouns for resources, HTTP verbs for actions, `201` plus a `Location` header on create, `204` on delete. Cancelling is `DELETE /api/appointments/:id` because it is the assignment's "delete" operation, but the row is kept with status `cancelled` for refund history, so the response is `200` with the refund amount rather than an empty `204`.
 
-**No double booking, even under simultaneous requests.** Booking runs in one transaction that first locks the doctor's row (`SELECT ... FOR UPDATE`), then checks the slot, counts that day's live bookings, and inserts. All bookings for the same doctor queue behind the lock, so neither the same-slot race nor the 12-per-day race can happen: two requests can never both read "11 booked" and both insert. As a backstop the database also has `UNIQUE (doctor_id, active_slot)`. `active_slot` is a generated column equal to `appt_datetime` while the status is `booked` and `NULL` once cancelled. MySQL unique indexes ignore NULLs, so a cancelled slot is bookable again while the cancelled row stays for refund history. `npm run demo:concurrency` fires simultaneous requests at a running API to show this.
+**No double booking, even under simultaneous requests.** Booking runs in one transaction that first locks the doctor's row (`SELECT ... FOR UPDATE`), then checks the slot, counts that day's live bookings, and inserts. All bookings for the same doctor queue behind the lock, so neither the same-slot race nor the 12-per-day race can happen: two requests can never both read "11 booked" and both insert. As a backstop the database also has `UNIQUE (doctor_id, active_slot)`. `active_slot` is a generated column equal to `appt_datetime` while the status is `booked` and `NULL` once cancelled. MySQL unique indexes ignore NULLs, so a cancelled slot is bookable again while the cancelled row stays for refund history.
 
 **Refund policy (computed on the server from the notice given, never taken from the client).**
 
@@ -137,7 +137,6 @@ The guarantee is at-least-once, not exactly-once. If the booking commits but Red
 ```
 ├── database/        schema.sql, seed.sql, schema.dbml
 ├── locales/         en.json, fr.json
-├── scripts/         concurrency-demo.js
 ├── tests/           Jest unit tests (no MySQL or Redis needed)
 └── src/
     ├── config/      environment, MySQL pool, Redis clients
