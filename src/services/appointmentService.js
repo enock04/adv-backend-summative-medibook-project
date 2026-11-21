@@ -50,6 +50,7 @@ const bookAppointment = async ({ patient_id, doctor_id, appt_datetime }, now = n
       doctor_id,
       appt_datetime: slot,
       amount_paid: lockedDoctor.consultation_fee,
+      booked_on: formatDateTime(now),
     });
     return {
       appointment: await appointmentModel.findById(id, connection),

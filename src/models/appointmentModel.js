@@ -3,10 +3,14 @@ const pool = require('../config/db');
 const COLUMNS =
   'id, patient_id, doctor_id, appt_datetime, status, amount_paid, refund_amount, cancelled_at, booked_on';
 
-const insert = async (connection, { patient_id, doctor_id, appt_datetime, amount_paid }) => {
+const insert = async (
+  connection,
+  { patient_id, doctor_id, appt_datetime, amount_paid, booked_on }
+) => {
   const [result] = await connection.execute(
-    'INSERT INTO appointments (patient_id, doctor_id, appt_datetime, amount_paid) VALUES (?, ?, ?, ?)',
-    [patient_id, doctor_id, appt_datetime, amount_paid]
+    `INSERT INTO appointments (patient_id, doctor_id, appt_datetime, amount_paid, booked_on)
+     VALUES (?, ?, ?, ?, ?)`,
+    [patient_id, doctor_id, appt_datetime, amount_paid, booked_on]
   );
   return result.insertId;
 };
