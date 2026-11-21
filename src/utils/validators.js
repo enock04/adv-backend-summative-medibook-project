@@ -1,9 +1,18 @@
 const { badRequest } = require('./httpError');
 const { parseDateTime } = require('./slot');
 
+// Limits mirror the column sizes in database/schema.sql.
+const LIMITS = {
+  name: { min: 2, max: 100 },
+  email: { min: 1, max: 150 },
+  phone: { min: 7, max: 20 },
+  specialty: { min: 1, max: 80 },
+  room: { min: 1, max: 10 },
+  maxFee: 99999999.99,
+};
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
-const MAX_FEE = 99999999.99;
+const PHONE_PATTERN = /^[0-9+\-()\s]+$/;
 
 const parseId = (value) => {
   if (!/^[1-9]\d*$/.test(String(value))) {
@@ -12,7 +21,7 @@ const parseId = (value) => {
   return Number(value);
 };
 
-const requireString = (body, field, { min = 1, max }) => {
+const requireString = (body, field, { min, max }) => {
   const value = body[field];
   if (typeof value !== 'string') {
     throw badRequest(`${field} is required and must be a string`);
@@ -25,24 +34,24 @@ const requireString = (body, field, { min = 1, max }) => {
 };
 
 const validatePatientInput = (body = {}) => {
-  const full_name = requireString(body, 'full_name', { min: 2, max: 100 });
-  const email = requireString(body, 'email', { max: 150 }).toLowerCase();
-  const phone = requireString(body, 'phone', { max: 20 });
+  const full_name = requireString(body, 'full_name', LIMITS.name);
+  const email = requireString(body, 'email', LIMITS.email).toLowerCase();
+  const phone = requireString(body, 'phone', LIMITS.phone);
 
   if (!EMAIL_PATTERN.test(email)) throw badRequest('email is not a valid email address');
-  if (!PHONE_PATTERN.test(phone)) throw badRequest('phone must be 7-20 characters of digits, spaces, +, - or ()');
+  if (!PHONE_PATTERN.test(phone)) throw badRequest('phone may only contain digits, spaces, +, - and ()');
 
   return { full_name, email, phone };
 };
 
 const validateDoctorInput = (body = {}) => {
-  const full_name = requireString(body, 'full_name', { min: 2, max: 100 });
-  const specialty = requireString(body, 'specialty', { max: 80 });
-  const room = requireString(body, 'room', { max: 10 });
+  const full_name = requireString(body, 'full_name', LIMITS.name);
+  const specialty = requireString(body, 'specialty', LIMITS.specialty);
+  const room = requireString(body, 'room', LIMITS.room);
 
   const fee = body.consultation_fee;
-  if (typeof fee !== 'number' || !Number.isFinite(fee) || fee < 0 || fee > MAX_FEE) {
-    throw badRequest('consultation_fee must be a number between 0 and 99999999.99');
+  if (typeof fee !== 'number' || !Number.isFinite(fee) || fee < 0 || fee > LIMITS.maxFee) {
+    throw badRequest(`consultation_fee must be a number between 0 and ${LIMITS.maxFee}`);
   }
   if (Math.round(fee * 100) / 100 !== fee) {
     throw badRequest('consultation_fee can have at most 2 decimal places');

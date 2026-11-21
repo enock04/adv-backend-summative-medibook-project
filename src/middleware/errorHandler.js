@@ -11,7 +11,7 @@ const notFoundHandler = (req, res) => {
   res.status(404).json({ error: `Route ${req.method} ${req.originalUrl} not found` });
 };
 
-// eslint-disable-next-line no-unused-vars
+// Express identifies error middleware by its four parameters, so `next` must stay.
 const errorHandler = (err, req, res, next) => {
   if (err instanceof HttpError) {
     return res.status(err.status).json({ error: err.message, ...err.extra });
