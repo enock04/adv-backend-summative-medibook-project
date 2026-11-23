@@ -4,6 +4,8 @@ Backend service for booking doctor appointments at a community clinic. Doctors s
 
 **Stack:** Node.js, Express, MySQL (`mysql2`, parameterized queries only, no ORM), Redis (`ioredis`), Jest.
 
+**Demo video:** [https://youtu.be/xia7ddhCvdk](https://youtu.be/xia7ddhCvdk)
+
 The original assignment brief is kept in [docs/ASSIGNMENT.md](docs/ASSIGNMENT.md). The database diagram is [schema-diagram.pdf](schema-diagram.pdf).
 
 ## Prerequisites
